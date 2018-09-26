@@ -4,9 +4,11 @@ import (
     "image"
     "image/png"
     "image/color"
-	"log"
+    "log"
     "os"
+    "go-ray/primitives"
 )
+
 
 func main() {
     const width, height = 200, 100
@@ -15,11 +17,15 @@ func main() {
 
     for y := 0; y < height; y++ {
         for x := 0; x < width; x++ {
-            r, g, b := float32(x) / float32(width), float32(y) / float32(height), 0.2
+            col := primitives.Vector {
+                E0: float64(x) / float64(width),
+                E1: float64(y) / float64(height),
+                E2: 0.2,
+            }
             img.Set(x, height - y, color.NRGBA{
-                R: uint8(r * 255.9),
-                G: uint8(g * 255.9),
-                B: uint8(b * 255.9),
+                R: uint8(col.R() * 255.9),
+                G: uint8(col.G() * 255.9),
+                B: uint8(col.B() * 255.9),
                 A: 255,
             })
         }

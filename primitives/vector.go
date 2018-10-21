@@ -30,7 +30,7 @@ func (v Vector) Mul(ov Vector) Vector {
 }
 
 func (v Vector) ScalarDiv(m float64) Vector {
-    return Vector{ m * v.E0, m * v.E1, m * v.E2 }
+    return Vector{ v.E0 / m, v.E1 / m, v.E2 / m }
 }
 
 func (v Vector) Div(ov Vector) Vector {
@@ -48,7 +48,7 @@ func (v Vector) Cross(ov Vector) Vector {
 }
 
 func (v Vector) Length() float64 {
-    return math.Sqrt( v.E0 * v.E0 + v.E1 * v.E1 + v.E2 * v.E2 )
+    return math.Sqrt( (v.E0 * v.E0) + (v.E1 * v.E1) + (v.E2 * v.E2) )
 }
 
 func (v Vector) Unit() Vector {

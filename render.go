@@ -6,21 +6,28 @@ import (
 	"image/color"
 	"image/png"
 	"log"
+    "math"
 	"os"
 )
 
-func HitSphere(center primitives.Vector, radius float64, r primitives.Ray) bool {
+func HitSphere(center primitives.Vector, radius float64, r primitives.Ray) float64 {
     oc := r.Origin().Sub(center)
     a := r.Direction().Dot(r.Direction())
     b := oc.Dot(r.Direction()) * 2.0
     c := oc.Dot(oc) - (radius * radius)
     discriminant := (b * b) - (4 * a * c)
-    return discriminant > 0
+    if discriminant < 0 {
+        return -1.0
+    } else {
+        return (-b - math.Sqrt(discriminant)) / (2.0 * a)
+    }
 }
 
 func Color(r primitives.Ray) primitives.Vector {
-    if HitSphere(primitives.Vector{0.0, 0.0, -1.0}, 0.5, r) {
-        return primitives.Vector{1.0, 0.0, 0.0}
+    t_sphere := HitSphere(primitives.Vector{0.0, 0.0, -1.0}, 0.5, r)
+    if t_sphere > 0.0 {
+        norm := r.PointAtParameter(t_sphere).Sub(primitives.Vector{ 0.0, 0.0, -1.0}).Unit()
+        return primitives.Vector{norm.X() + 1, norm.Y() + 1, norm.Z() + 1}.ScalarMul(0.5)
     }
 	unitDirection := r.Direction().Unit()
 	t := 0.5 * (unitDirection.Y() + 1.0)

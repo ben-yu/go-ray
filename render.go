@@ -33,7 +33,7 @@ func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vec
 	if world.Hit(r, 0.001, math.MaxFloat64, &rec) {
         var scattered primitives.Ray
         var attenuation primitives.Vector
-        if depth < 10 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
+        if depth < 50 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
             return attenuation.Mul(Color(scattered, world, depth + 1))
         } else {
             return primitives.Vector{0.0, 0.0, 0.0}
@@ -56,7 +56,7 @@ func main() {
 			primitives.Sphere{
 				0.5,
                 primitives.Vector{0.0, 0.0, -1.0},
-                primitives.Lambertian{primitives.Vector{0.8,0.3,0.3}},
+                primitives.Lambertian{primitives.Vector{0.1,0.2,0.5}},
 			},
 			primitives.Sphere{
 				100.0,
@@ -71,7 +71,12 @@ func main() {
 			primitives.Sphere{
 				0.5,
                 primitives.Vector{-1.0, 0.0, -1.0},
-                primitives.Metal{primitives.Vector{0.8,0.8,0.8},1.0},
+                primitives.Dielectric{1.5},
+			},
+			primitives.Sphere{
+				-0.45,
+                primitives.Vector{-1.0, 0.0, -1.0},
+                primitives.Dielectric{1.5},
 			},
 
 		},

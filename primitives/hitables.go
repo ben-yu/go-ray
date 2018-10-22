@@ -19,6 +19,7 @@ func RandomInUnitSphere() Vector {
     return p
 }
 
+// Scatters ray in a random direction
 func (l Lambertian) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scattered *Ray) bool {
     target := h.P.Add(h.Normal).Add(RandomInUnitSphere())
     *scattered = Ray{h.P, target.Sub(h.P)}
@@ -35,11 +36,67 @@ func Reflect(v Vector, n Vector) Vector {
     return v.Sub(n.ScalarMul(v.Dot(n)).ScalarMul(2.0))
 }
 
+func Schlick(cosine float64, refIdx float64) float64 {
+    r0 := (1-refIdx) / (1+refIdx)
+    r0 = r0 * r0
+    return r0 + (1-r0) * math.Pow(1.0-cosine, 5.0)
+}
+
+// Scatters ray by reflecting from point of intersection with some randomness
+// from the reflection point
 func (m Metal) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scattered *Ray) bool {
     reflected := Reflect(rayIn.Direction().Unit(), h.Normal)
     *scattered = Ray{h.P, reflected.Add(RandomInUnitSphere().ScalarMul(m.Fuzz))}
     *attenuation = m.Albedo
     return scattered.Direction().Dot(h.Normal) > 0
+}
+
+type Dielectric struct {
+    RefIdx float64
+}
+
+func (d Dielectric) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scattered *Ray) bool {
+    var outwardNormal Vector
+    reflected := Reflect(rayIn.Direction(), h.Normal)
+    var ratio, reflectProb, cosine float64
+    var refracted Vector
+    *attenuation = Vector{1.0, 1.0, 1.0}
+    if rayIn.Direction().Dot(h.Normal) > 0 {
+        outwardNormal = h.Normal.ScalarMul(-1)
+        ratio = d.RefIdx
+        cosine = d.RefIdx * rayIn.Direction().Dot(h.Normal) / rayIn.Direction().Length()
+    } else {
+        outwardNormal = h.Normal
+        ratio = 1.0 / d.RefIdx
+        cosine = -rayIn.Direction().Dot(h.Normal) / rayIn.Direction().Length()
+    }
+
+    if Refract(rayIn.Direction(), outwardNormal, ratio, &refracted) {
+        reflectProb = Schlick(cosine, d.RefIdx)
+    } else {
+        *scattered = Ray{h.P, reflected}
+        reflectProb = 1.0
+    }
+
+    if rand.Float64() < reflectProb {
+        *scattered = Ray{h.P, reflected}
+    } else {
+        *scattered = Ray{h.P, refracted}
+    }
+    return true
+}
+
+// Implementation of Snell's Law
+func Refract(v Vector, n Vector, ratio float64, refracted *Vector) bool {
+    uv := v.Unit()
+    dt := uv.Dot(n)
+    discriminant := 1.0 - ratio * ratio * (1 - dt * dt)
+    if discriminant > 0 {
+        *refracted = uv.Sub(n.ScalarMul(dt)).ScalarMul(ratio).Sub(n.ScalarMul(math.Sqrt(discriminant)))
+        return true
+    }
+
+    return false
 }
 
 type HitRecord struct {

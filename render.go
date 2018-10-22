@@ -28,19 +28,16 @@ func (c Camera) GetRay(u float64, v float64) primitives.Ray {
 	return primitives.Ray{c.Origin, c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v))}
 }
 
-func RandomInUnitSphere() primitives.Vector {
-    var p primitives.Vector
-    for notFound := true; notFound; notFound = (p.SquaredLength() >= 1.0) {
-        p = primitives.Vector{rand.Float64(), rand.Float64(), rand.Float64()}.ScalarMul(2.0).Sub(primitives.Vector{1.0,1.0,1.0})
-    }
-    return p
-}
-
-func Color(r primitives.Ray, world primitives.Hitable) primitives.Vector {
+func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vector {
 	var rec primitives.HitRecord
 	if world.Hit(r, 0.001, math.MaxFloat64, &rec) {
-		target := rec.P.Add(rec.Normal).Add(RandomInUnitSphere())
-		return Color(primitives.Ray{rec.P, target.Sub(rec.P)}, world).ScalarMul(0.5)
+        var scattered primitives.Ray
+        var attenuation primitives.Vector
+        if depth < 10 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
+            return attenuation.Mul(Color(scattered, world, depth + 1))
+        } else {
+            return primitives.Vector{0.0, 0.0, 0.0}
+        }
 	}
 	unitDirection := r.Direction().Unit()
 	t := 0.5 * (unitDirection.Y() + 1.0)
@@ -57,11 +54,26 @@ func main() {
 	world := primitives.HitableList{
 		[]primitives.Hitable{
 			primitives.Sphere{
-				0.5, primitives.Vector{0.0, 0.0, -1.0},
+				0.5,
+                primitives.Vector{0.0, 0.0, -1.0},
+                primitives.Lambertian{primitives.Vector{0.8,0.3,0.3}},
 			},
 			primitives.Sphere{
-				100.0, primitives.Vector{0.0, -100.5, -1.0},
+				100.0,
+                primitives.Vector{0.0, -100.5, -1.0},
+                primitives.Lambertian{primitives.Vector{0.8,0.8,0.0}},
 			},
+			primitives.Sphere{
+				0.5,
+                primitives.Vector{1.0, 0.0, -1.0},
+                primitives.Metal{primitives.Vector{0.8,0.6,0.2},0.3},
+			},
+			primitives.Sphere{
+				0.5,
+                primitives.Vector{-1.0, 0.0, -1.0},
+                primitives.Metal{primitives.Vector{0.8,0.8,0.8},1.0},
+			},
+
 		},
 	}
 
@@ -72,7 +84,7 @@ func main() {
 				u := (float64(x) + rand.Float64()) / float64(width)
 				v := (float64(y) + rand.Float64()) / float64(height)
 				r := camera.GetRay(u, v)
-				col = col.Add(Color(r, world))
+				col = col.Add(Color(r, world, 0))
 			}
 			col = col.ScalarDiv(numOfSamples)
             col = primitives.Vector{

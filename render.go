@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go-ray/primitives"
+	"github.com/ben-yu/go-ray/primitives"
 	"image"
 	"image/color"
 	"image/png"
@@ -10,23 +10,10 @@ import (
 	"os"
 )
 
-func HitSphere(center primitives.Vector, radius float64, r primitives.Ray) float64 {
-    oc := r.Origin().Sub(center)
-    a := r.Direction().Dot(r.Direction())
-    b := oc.Dot(r.Direction()) * 2.0
-    c := oc.Dot(oc) - (radius * radius)
-    discriminant := (b * b) - (4 * a * c)
-    if discriminant < 0 {
-        return -1.0
-    } else {
-        return (-b - math.Sqrt(discriminant)) / (2.0 * a)
-    }
-}
-
-func Color(r primitives.Ray) primitives.Vector {
-    t_sphere := HitSphere(primitives.Vector{0.0, 0.0, -1.0}, 0.5, r)
-    if t_sphere > 0.0 {
-        norm := r.PointAtParameter(t_sphere).Sub(primitives.Vector{ 0.0, 0.0, -1.0}).Unit()
+func Color(r primitives.Ray, world primitives.Hitable) primitives.Vector {
+    var rec primitives.HitRecord
+    if world.Hit(r, 0.0, math.MaxFloat64, &rec) {
+        norm := rec.Normal
         return primitives.Vector{norm.X() + 1, norm.Y() + 1, norm.Z() + 1}.ScalarMul(0.5)
     }
 	unitDirection := r.Direction().Unit()
@@ -44,12 +31,23 @@ func main() {
 	vertical := primitives.Vector{0.0, 2.0, 0.0}
 	origin := primitives.Vector{0.0, 0.0, 0.0}
 
+    world := primitives.HitableList{
+        []primitives.Hitable {
+            primitives.Sphere{
+                0.5, primitives.Vector{0.0, 0.0, -1.0},
+            },
+            primitives.Sphere{
+                100.0, primitives.Vector{0.0, -100.5, -1.0},
+            },
+        },
+    }
+
 	for y := height - 1; y >= 0; y-- {
 		for x := 0; x < width; x++ {
 			u := float64(x) / float64(width)
 			v := float64(y) / float64(height)
 			r := primitives.Ray{origin, lowerLeftCorner.Add(horizontal.ScalarMul(u)).Add(vertical.ScalarMul(v))}
-			col := Color(r)
+			col := Color(r, world)
 
 
 			img.Set(x, height-y, color.NRGBA{

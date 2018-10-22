@@ -51,6 +51,11 @@ func (v Vector) Length() float64 {
     return math.Sqrt( (v.E0 * v.E0) + (v.E1 * v.E1) + (v.E2 * v.E2) )
 }
 
+func (v Vector) SquaredLength() float64 {
+    return (v.E0 * v.E0) + (v.E1 * v.E1) + (v.E2 * v.E2)
+}
+
+
 func (v Vector) Unit() Vector {
     return v.ScalarDiv(v.Length())
 }

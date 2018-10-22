@@ -28,11 +28,19 @@ func (c Camera) GetRay(u float64, v float64) primitives.Ray {
 	return primitives.Ray{c.Origin, c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v))}
 }
 
+func RandomInUnitSphere() primitives.Vector {
+    var p primitives.Vector
+    for notFound := true; notFound; notFound = (p.SquaredLength() >= 1.0) {
+        p = primitives.Vector{rand.Float64(), rand.Float64(), rand.Float64()}.ScalarMul(2.0).Sub(primitives.Vector{1.0,1.0,1.0})
+    }
+    return p
+}
+
 func Color(r primitives.Ray, world primitives.Hitable) primitives.Vector {
 	var rec primitives.HitRecord
-	if world.Hit(r, 0.0, math.MaxFloat64, &rec) {
-		norm := rec.Normal
-		return primitives.Vector{norm.X() + 1, norm.Y() + 1, norm.Z() + 1}.ScalarMul(0.5)
+	if world.Hit(r, 0.001, math.MaxFloat64, &rec) {
+		target := rec.P.Add(rec.Normal).Add(RandomInUnitSphere())
+		return Color(primitives.Ray{rec.P, target.Sub(rec.P)}, world).ScalarMul(0.5)
 	}
 	unitDirection := r.Direction().Unit()
 	t := 0.5 * (unitDirection.Y() + 1.0)
@@ -67,6 +75,11 @@ func main() {
 				col = col.Add(Color(r, world))
 			}
 			col = col.ScalarDiv(numOfSamples)
+            col = primitives.Vector{
+                math.Sqrt(col.R()),
+                math.Sqrt(col.G()),
+                math.Sqrt(col.B()),
+            }
 
 			img.Set(x, height-y, color.NRGBA{
 				R: uint8(col.R() * 255.99),

@@ -4,7 +4,7 @@ import "math"
 
 type HitRecord struct {
     t float64
-    p, Normal Vector
+    P, Normal Vector
 }
 
 type Hitable interface {
@@ -26,15 +26,15 @@ func (s Sphere) Hit(r Ray, tMin float64, tMax float64, h *HitRecord) bool {
         temp := (-b - math.Sqrt((b * b) - (a * c))) / a
         if temp < tMax && temp > tMin {
             h.t = temp
-            h.p = r.PointAtParameter(h.t)
-            h.Normal = (h.p.Sub(s.Center)).ScalarDiv(s.Radius)
+            h.P = r.PointAtParameter(h.t)
+            h.Normal = (h.P.Sub(s.Center)).ScalarDiv(s.Radius)
             return true
         }
         temp = (-b + math.Sqrt((b * b) - (a * c))) / a
         if temp < tMax && temp > tMin {
             h.t = temp
-            h.p = r.PointAtParameter(h.t)
-            h.Normal = (h.p.Sub(s.Center)).ScalarDiv(s.Radius)
+            h.P = r.PointAtParameter(h.t)
+            h.Normal = (h.P.Sub(s.Center)).ScalarDiv(s.Radius)
             return true
         }
     }

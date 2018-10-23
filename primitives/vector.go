@@ -42,9 +42,9 @@ func (v Vector) Dot(ov Vector) float64 {
 }
 
 func (v Vector) Cross(ov Vector) Vector {
-    return Vector{ v.E1 * ov.E2 - v.E2 * ov.E1,
-                  -(v.E0 * ov.E2 - v.E2 * ov.E0),
-                  v.E0 * ov.E1 - v.E1 * ov.E0 }
+    return Vector{ (v.E1 * ov.E2) - (v.E2 * ov.E1),
+                  -((v.E0 * ov.E2) - (v.E2 * ov.E0)),
+                  (v.E0 * ov.E1) - (v.E1 * ov.E0) }
 }
 
 func (v Vector) Length() float64 {

@@ -12,20 +12,44 @@ import (
 )
 
 type Camera struct {
-	Origin, LowerLeftCorner, Horizontal, Vertical primitives.Vector
+	Origin, LowerLeftCorner, Horizontal, Vertical, U, V, W primitives.Vector
+    LensRadius float64
 }
 
-func DefaultCamera() Camera {
+
+func DefaultCamera(lookFrom primitives.Vector,
+                    lookAt primitives.Vector,
+                    vUP primitives.Vector,
+                    vFOV float64,
+                    aspect float64,
+                    aperture float64,
+                    focusDist float64) Camera {
+
+    lensRadius := aperture / 2
+    theta := vFOV * math.Pi / 180.0
+    halfHeight := math.Tan(theta/2)
+    halfWidth := aspect * halfHeight
+
+    w := lookFrom.Sub(lookAt).Unit()
+    u := vUP.Cross(w).Unit()
+    v := w.Cross(u)
+
 	return Camera{
-		Origin:          primitives.Vector{0.0, 0.0, 0.0},
-		LowerLeftCorner: primitives.Vector{-2.0, -1.0, -1.0},
-		Vertical:        primitives.Vector{0.0, 2.0, 0.0},
-		Horizontal:      primitives.Vector{4.0, 0.0, 0.0},
+		Origin:          lookFrom,
+		LowerLeftCorner: lookFrom.Sub(u.ScalarMul(halfWidth*focusDist)).Sub(v.ScalarMul(halfHeight*focusDist)).Sub(w.ScalarMul(focusDist)),
+		Horizontal:      u.ScalarMul(halfWidth*2*focusDist),
+		Vertical:        v.ScalarMul(halfHeight*2*focusDist),
+        U: u,
+        V: v,
+        W: w,
+        LensRadius: lensRadius,
 	}
 }
 
 func (c Camera) GetRay(u float64, v float64) primitives.Ray {
-	return primitives.Ray{c.Origin, c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v))}
+    rd := primitives.RandomInUnitDisk().ScalarMul(c.LensRadius)
+    offset := c.U.ScalarMul(rd.X()).Add(c.V.ScalarMul(rd.Y()))
+	return primitives.Ray{c.Origin.Add(offset), c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v)).Sub(c.Origin).Sub(offset)}
 }
 
 func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vector {
@@ -33,7 +57,7 @@ func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vec
 	if world.Hit(r, 0.001, math.MaxFloat64, &rec) {
         var scattered primitives.Ray
         var attenuation primitives.Vector
-        if depth < 50 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
+        if depth < 100 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
             return attenuation.Mul(Color(scattered, world, depth + 1))
         } else {
             return primitives.Vector{0.0, 0.0, 0.0}
@@ -49,7 +73,18 @@ func main() {
 
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 
-	camera := DefaultCamera()
+    lookFrom := primitives.Vector{2.0,2.0,1.0}
+    lookAt := primitives.Vector{0.0,0.0,-1.0}
+
+    camera := DefaultCamera(
+        lookFrom,
+        lookAt,
+        primitives.Vector{0.0,1.0,0.0},
+        45,
+        float64(width)/float64(height),
+        lookFrom.Sub(lookAt).Length(),
+        3.5,
+    )
 
 	world := primitives.HitableList{
 		[]primitives.Hitable{

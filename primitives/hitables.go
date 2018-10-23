@@ -19,6 +19,14 @@ func RandomInUnitSphere() Vector {
     return p
 }
 
+func RandomInUnitDisk() Vector {
+    var p Vector
+    for notFound := true; notFound; notFound = (p.SquaredLength() >= 1.0) {
+        p = Vector{rand.Float64(), rand.Float64(), 0.0}.ScalarMul(2.0).Sub(Vector{1.0,1.0,0.0})
+    }
+    return p
+}
+
 // Scatters ray in a random direction
 func (l Lambertian) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scattered *Ray) bool {
     target := h.P.Add(h.Normal).Add(RandomInUnitSphere())

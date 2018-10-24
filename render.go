@@ -47,8 +47,6 @@ func DefaultCamera(lookFrom primitives.Vector,
 }
 
 func (c Camera) GetRay(u float64, v float64) primitives.Ray {
-    //rd := primitives.RandomInUnitDisk().ScalarMul(c.LensRadius)
-    //offset := c.U.ScalarMul(rd.X()).Add(c.V.ScalarMul(rd.Y()))
 	return primitives.Ray{c.Origin, c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v)).Sub(c.Origin)}
 }
 
@@ -128,7 +126,7 @@ func RandomScene() primitives.HitableList {
 }
 
 func main() {
-	const width, height, numOfSamples = 200, 100, 100
+	const width, height, numOfSamples = 2560, 1600, 100
 
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 
@@ -146,37 +144,6 @@ func main() {
     )
 
     world := RandomScene()
-
-//	world := primitives.hitablelist{
-//		[]primitives.hitable{
-//			primitives.sphere{
-//				0.5,
-//                primitives.vector{0.0, 0.0, -1.0},
-//                primitives.lambertian{primitives.vector{0.1,0.2,0.5}},
-//			},
-//			primitives.sphere{
-//				100.0,
-//                primitives.vector{0.0, -100.5, -1.0},
-//                primitives.lambertian{primitives.vector{0.8,0.8,0.0}},
-//			},
-//			primitives.sphere{
-//				0.5,
-//                primitives.vector{1.0, 0.0, -1.0},
-//                primitives.metal{primitives.vector{0.8,0.6,0.2},0.3},
-//			},
-//			primitives.sphere{
-//				0.5,
-//                primitives.vector{-1.0, 0.0, -1.0},
-//                primitives.dielectric{1.5},
-//			},
-//			primitives.sphere{
-//				-0.45,
-//                primitives.vector{-1.0, 0.0, -1.0},
-//                primitives.dielectric{1.5},
-//			},
-//
-//		},
-//	}
 
 	for y := height - 1; y >= 0; y-- {
 		for x := 0; x < width; x++ {

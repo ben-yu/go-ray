@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/ben-yu/go-ray/primitives"
 	"image"
 	"image/color"
 	"image/png"
@@ -9,40 +8,41 @@ import (
 	"math"
 	"math/rand"
 	"os"
+
+	"github.com/ben-yu/go-ray/primitives"
 )
 
 type Camera struct {
 	Origin, LowerLeftCorner, Horizontal, Vertical, U, V, W primitives.Vector
-    LensRadius float64
+	LensRadius                                             float64
 }
 
-
 func DefaultCamera(lookFrom primitives.Vector,
-                    lookAt primitives.Vector,
-                    vUP primitives.Vector,
-                    vFOV float64,
-                    aspect float64,
-                    aperture float64,
-                    focusDist float64) Camera {
+	lookAt primitives.Vector,
+	vUP primitives.Vector,
+	vFOV float64,
+	aspect float64,
+	aperture float64,
+	focusDist float64) Camera {
 
-    lensRadius := aperture / 2.0
-    theta := vFOV * math.Pi / 180.0
-    halfHeight := math.Tan(theta/2)
-    halfWidth := aspect * halfHeight
+	lensRadius := aperture / 2.0
+	theta := vFOV * math.Pi / 180.0
+	halfHeight := math.Tan(theta / 2)
+	halfWidth := aspect * halfHeight
 
-    w := lookFrom.Sub(lookAt).Unit()
-    u := vUP.Cross(w).Unit()
-    v := w.Cross(u)
+	w := lookFrom.Sub(lookAt).Unit()
+	u := vUP.Cross(w).Unit()
+	v := w.C(u)
 
 	return Camera{
 		Origin:          lookFrom,
 		LowerLeftCorner: lookFrom.Sub(u.ScalarMul(halfWidth)).Sub(v.ScalarMul(halfHeight)).Sub(w),
-		Horizontal:      u.ScalarMul(halfWidth*2),
-		Vertical:        v.ScalarMul(halfHeight*2),
-        U: u,
-        V: v,
-        W: w,
-        LensRadius: lensRadius,
+		Horizontal:      u.ScalarMul(halfWidth * 2),
+		Vertical:        v.ScalarMul(halfHeight * 2),
+		U:               u,
+		V:               v,
+		W:               w,
+		LensRadius:      lensRadius,
 	}
 }
 
@@ -53,13 +53,13 @@ func (c Camera) GetRay(u float64, v float64) primitives.Ray {
 func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vector {
 	var rec primitives.HitRecord
 	if world.Hit(r, 0.001, math.MaxFloat64, &rec) {
-        var scattered primitives.Ray
-        var attenuation primitives.Vector
-        if depth < 50 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
-            return attenuation.Mul(Color(scattered, world, depth + 1))
-        } else {
-            return primitives.Vector{0.0, 0.0, 0.0}
-        }
+		var scattered primitives.Ray
+		var attenuation primitives.Vector
+		if depth < 50 && (&rec).Mat.Scatter(r, &rec, &attenuation, &scattered) {
+			return attenuation.Mul(Color(scattered, world, depth+1))
+		} else {
+			return primitives.Vector{0.0, 0.0, 0.0}
+		}
 	}
 	unitDirection := r.Direction().Unit()
 	t := 0.5 * (unitDirection.Y() + 1.0)
@@ -67,62 +67,62 @@ func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vec
 }
 
 func RandomScene() primitives.HitableList {
-    const n = 484
-    var list []primitives.Hitable
-    list = make([]primitives.Hitable, n+1, n+1)
+	const n = 484
+	var list []primitives.Hitable
+	list = make([]primitives.Hitable, n+1, n+1)
 
-    list[0] = primitives.Sphere{
-				1000.0,
-                primitives.Vector{0.0, -1000.0, 0.0},
-                primitives.Lambertian{primitives.Vector{0.5,0.5,0.5}}}
+	list[0] = primitives.Sphere{
+		1000.0,
+		primitives.Vector{0.0, -1000.0, 0.0},
+		primitives.Lambertian{primitives.Vector{0.5, 0.5, 0.5}}}
 
-    var i = 1
-    for a := -11; a < 11; a++ {
-        for b := -11; b < 11; b++ {
-            chooseMat := rand.Float64()
-            center := primitives.Vector{ float64(a) + 0.9 * rand.Float64(), 0.2, float64(b) + 0.9 * rand.Float64() }
-            if center.Sub(primitives.Vector{4.0,0.2,0.0}).Length() > 0.9 {
-                if chooseMat < 0.8 {
-                    list[i] = primitives.Sphere{
-                        0.2,
-                        center,
-                        primitives.Lambertian{primitives.Vector{rand.Float64()*rand.Float64(),rand.Float64()*rand.Float64(),rand.Float64()*rand.Float64()}}}
-                } else if chooseMat < 0.95 {
-                    list[i] = primitives.Sphere{
-                        0.2,
-                        center,
-                        primitives.Metal{primitives.Vector{0.5*(1+rand.Float64()),0.5*(1+rand.Float64()),0.5*(1+rand.Float64())},0.5*rand.Float64()},
-                    }
-                } else {
-                    list[i] = primitives.Sphere{
-                        0.2,
-                        center,
-                        primitives.Dielectric{1.5},
-                    }
-                }
-                i += 1
-            }
-        }
-    }
-
-    list[i] = primitives.Sphere{
-				1.0,
-                primitives.Vector{-4.0, 1.0, 0.0},
-                primitives.Lambertian{primitives.Vector{0.4,0.2,0.1}},
+	var i = 1
+	for a := -11; a < 11; a++ {
+		for b := -11; b < 11; b++ {
+			chooseMat := rand.Float64()
+			center := primitives.Vector{float64(a) + 0.9*rand.Float64(), 0.2, float64(b) + 0.9*rand.Float64()}
+			if center.Sub(primitives.Vector{4.0, 0.2, 0.0}).Length() > 0.9 {
+				if chooseMat < 0.8 {
+					list[i] = primitives.Sphere{
+						0.2,
+						center,
+						primitives.Lambertian{primitives.Vector{rand.Float64() * rand.Float64(), rand.Float64() * rand.Float64(), rand.Float64() * rand.Float64()}}}
+				} else if chooseMat < 0.95 {
+					list[i] = primitives.Sphere{
+						0.2,
+						center,
+						primitives.Metal{primitives.Vector{0.5 * (1 + rand.Float64()), 0.5 * (1 + rand.Float64()), 0.5 * (1 + rand.Float64())}, 0.5 * rand.Float64()},
+					}
+				} else {
+					list[i] = primitives.Sphere{
+						0.2,
+						center,
+						primitives.Dielectric{1.5},
+					}
+				}
+				i += 1
 			}
-    i += 1
+		}
+	}
+
 	list[i] = primitives.Sphere{
-				1.0,
-                primitives.Vector{4.0, 1.0, 0.0},
-                primitives.Metal{primitives.Vector{0.7,0.6,0.5},0.0},
-			}
-    i += 1
-	list[i]	= primitives.Sphere{
-				1.0,
-                primitives.Vector{0.0, 1.0, 0.0},
-                primitives.Dielectric{1.5},
-			}
-    return primitives.HitableList{list}
+		1.0,
+		primitives.Vector{-4.0, 1.0, 0.0},
+		primitives.Lambertian{primitives.Vector{0.4, 0.2, 0.1}},
+	}
+	i += 1
+	list[i] = primitives.Sphere{
+		1.0,
+		primitives.Vector{4.0, 1.0, 0.0},
+		primitives.Metal{primitives.Vector{0.7, 0.6, 0.5}, 0.0},
+	}
+	i += 1
+	list[i] = primitives.Sphere{
+		1.0,
+		primitives.Vector{0.0, 1.0, 0.0},
+		primitives.Dielectric{1.5},
+	}
+	return primitives.HitableList{list}
 }
 
 func main() {
@@ -130,20 +130,20 @@ func main() {
 
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 
-    lookFrom := primitives.Vector{6.0,1.0,2.0}
-    lookAt := primitives.Vector{0.0,1.0,0.0}
+	lookFrom := primitives.Vector{6.0, 1.0, 2.0}
+	lookAt := primitives.Vector{0.0, 1.0, 0.0}
 
-    camera := DefaultCamera(
-        lookFrom,
-        lookAt,
-        primitives.Vector{0.0,1.0,0.0},
-        75,
-        float64(width)/float64(height),
-        lookFrom.Sub(lookAt).Length(),
-        0.01,
-    )
+	camera := DefaultCamera(
+		lookFrom,
+		lookAt,
+		primitives.Vector{0.0, 1.0, 0.0},
+		75,
+		float64(width)/float64(height),
+		lookFrom.Sub(lookAt).Length(),
+		0.01,
+	)
 
-    world := RandomScene()
+	world := RandomScene()
 
 	for y := height - 1; y >= 0; y-- {
 		for x := 0; x < width; x++ {
@@ -155,11 +155,11 @@ func main() {
 				col = col.Add(Color(r, world, 0))
 			}
 			col = col.ScalarDiv(numOfSamples)
-            col = primitives.Vector{
-                math.Sqrt(col.R()),
-                math.Sqrt(col.G()),
-                math.Sqrt(col.B()),
-            }
+			col = primitives.Vector{
+				math.Sqrt(col.R()),
+				math.Sqrt(col.G()),
+				math.Sqrt(col.B()),
+			}
 
 			img.Set(x, height-y, color.NRGBA{
 				R: uint8(col.R() * 255.99),

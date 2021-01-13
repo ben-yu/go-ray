@@ -2,6 +2,7 @@ package primitives
 
 type Ray struct {
 	A, B Vector
+	Time float64
 }
 
 func (r Ray) Origin() Vector {

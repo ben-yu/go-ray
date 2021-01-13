@@ -32,7 +32,7 @@ func RandomInUnitDisk() Vector {
 // Scatters ray in a random direction
 func (l Lambertian) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scattered *Ray) bool {
 	target := h.P.Add(h.Normal).Add(RandomInUnitSphere())
-	*scattered = Ray{h.P, target.Sub(h.P)}
+	*scattered = Ray{h.P, target.Sub(h.P), rayIn.Time}
 	*attenuation = l.Albedo
 	return true
 }
@@ -56,7 +56,7 @@ func Schlick(cosine float64, refIdx float64) float64 {
 // from the reflection point
 func (m Metal) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scattered *Ray) bool {
 	reflected := Reflect(rayIn.Direction().Unit(), h.Normal)
-	*scattered = Ray{h.P, reflected.Add(RandomInUnitSphere().ScalarMul(m.Fuzz))}
+	*scattered = Ray{h.P, reflected.Add(RandomInUnitSphere().ScalarMul(m.Fuzz)), rayIn.Time}
 	*attenuation = m.Albedo
 	return scattered.Direction().Dot(h.Normal) > 0
 }
@@ -84,14 +84,14 @@ func (d Dielectric) Scatter(rayIn Ray, h *HitRecord, attenuation *Vector, scatte
 	if Refract(rayIn.Direction(), outwardNormal, ratio, &refracted) {
 		reflectProb = Schlick(cosine, d.RefIdx)
 	} else {
-		*scattered = Ray{h.P, reflected}
+		*scattered = Ray{h.P, reflected, rayIn.Time}
 		reflectProb = 1.0
 	}
 
 	if rand.Float64() < reflectProb {
-		*scattered = Ray{h.P, reflected}
+		*scattered = Ray{h.P, reflected, rayIn.Time}
 	} else {
-		*scattered = Ray{h.P, refracted}
+		*scattered = Ray{h.P, refracted, rayIn.Time}
 	}
 	return true
 }
@@ -145,6 +145,46 @@ func (s Sphere) Hit(r Ray, tMin float64, tMax float64, h *HitRecord) bool {
 			h.t = temp
 			h.P = r.PointAtParameter(h.t)
 			h.Normal = (h.P.Sub(s.Center)).ScalarDiv(s.Radius)
+			h.Mat = s.Mat
+			return true
+		}
+	}
+	return false
+}
+
+type MovingSphere struct {
+	Radius                       float64
+	StartingTime, EndingTime     float64
+	StartingCenter, EndingCenter Vector
+	Mat                          Material
+}
+
+func (s MovingSphere) Center(time float64) Vector {
+	curDiff := time - s.StartingTime
+	tDiff := s.EndingTime - s.StartingTime
+	return s.StartingCenter.Add(s.EndingCenter.Sub(s.StartingCenter).ScalarMul(curDiff / tDiff))
+}
+
+func (s MovingSphere) Hit(r Ray, tMin float64, tMax float64, h *HitRecord) bool {
+	oc := r.Origin().Sub(s.Center(r.Time))
+	a := r.Direction().Dot(r.Direction())
+	b := oc.Dot(r.Direction())
+	c := oc.Dot(oc) - (s.Radius * s.Radius)
+	discriminant := (b * b) - (a * c)
+	if discriminant > 0 {
+		temp := (-b - math.Sqrt((b*b)-(a*c))) / a
+		if temp < tMax && temp > tMin {
+			h.t = temp
+			h.P = r.PointAtParameter(h.t)
+			h.Normal = (h.P.Sub(s.Center(r.Time))).ScalarDiv(s.Radius)
+			h.Mat = s.Mat
+			return true
+		}
+		temp = (-b + math.Sqrt((b*b)-(a*c))) / a
+		if temp < tMax && temp > tMin {
+			h.t = temp
+			h.P = r.PointAtParameter(h.t)
+			h.Normal = (h.P.Sub(s.Center(r.Time))).ScalarDiv(s.Radius)
 			h.Mat = s.Mat
 			return true
 		}

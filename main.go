@@ -10,12 +10,15 @@ import (
 	"os"
 
 	"github.com/ben-yu/go-ray/primitives"
+	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli"
 )
 
 type Camera struct {
 	Origin, LowerLeftCorner, Horizontal, Vertical, U, V, W primitives.Vector
 	LensRadius                                             float64
+	StartTime                                              float64
+	EndTime                                                float64
 }
 
 func DefaultCamera(lookFrom primitives.Vector,
@@ -24,7 +27,9 @@ func DefaultCamera(lookFrom primitives.Vector,
 	vFOV float64,
 	aspect float64,
 	aperture float64,
-	focusDist float64) Camera {
+	focusDist float64,
+	startTime float64,
+	endTime float64) Camera {
 
 	lensRadius := aperture / 2.0
 	theta := vFOV * math.Pi / 180.0
@@ -44,11 +49,17 @@ func DefaultCamera(lookFrom primitives.Vector,
 		V:               v,
 		W:               w,
 		LensRadius:      lensRadius,
+		StartTime:       startTime,
+		EndTime:         endTime,
 	}
 }
 
 func (c Camera) GetRay(u float64, v float64) primitives.Ray {
-	return primitives.Ray{c.Origin, c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v)).Sub(c.Origin)}
+	return primitives.Ray{
+		A:    c.Origin,
+		B:    c.LowerLeftCorner.Add(c.Horizontal.ScalarMul(u)).Add(c.Vertical.ScalarMul(v)).Sub(c.Origin),
+		Time: (rand.Float64() * (c.EndTime - c.StartTime)) + c.StartTime,
+	}
 }
 
 func Color(r primitives.Ray, world primitives.Hitable, depth int) primitives.Vector {
@@ -84,17 +95,24 @@ func RandomScene() primitives.HitableList {
 			center := primitives.Vector{float64(a) + 0.9*rand.Float64(), 0.2, float64(b) + 0.9*rand.Float64()}
 			if center.Sub(primitives.Vector{4.0, 0.2, 0.0}).Length() > 0.9 {
 				if chooseMat < 0.8 {
-					list[i] = primitives.Sphere{
+					center2 := center.Add(primitives.Vector{0.0, rand.Float64() * 0.5, 0.0})
+					// Diffuse
+					list[i] = primitives.MovingSphere{
 						0.2,
+						0.0,
+						1.0,
 						center,
+						center2,
 						primitives.Lambertian{primitives.Vector{rand.Float64() * rand.Float64(), rand.Float64() * rand.Float64(), rand.Float64() * rand.Float64()}}}
 				} else if chooseMat < 0.95 {
+					// Metal
 					list[i] = primitives.Sphere{
 						0.2,
 						center,
 						primitives.Metal{primitives.Vector{0.5 * (1 + rand.Float64()), 0.5 * (1 + rand.Float64()), 0.5 * (1 + rand.Float64())}, 0.5 * rand.Float64()},
 					}
 				} else {
+					// Glass
 					list[i] = primitives.Sphere{
 						0.2,
 						center,
@@ -146,19 +164,19 @@ func main() {
 			},
 			&cli.IntFlag{
 				Name:        "width",
-				Value:       100,
+				Value:       400,
 				Usage:       "Width of the image in pixels",
 				Destination: &width,
 			},
 			&cli.IntFlag{
 				Name:        "height",
-				Value:       100,
+				Value:       225,
 				Usage:       "Height of the image in pixels",
 				Destination: &height,
 			},
 			&cli.IntFlag{
 				Name:        "samples",
-				Value:       10,
+				Value:       100,
 				Usage:       "Number of samples to take per pixel",
 				Destination: &samples,
 			},
@@ -186,20 +204,24 @@ func render(params RenderParams) {
 
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 
-	lookFrom := primitives.Vector{6.0, 1.0, 2.0}
-	lookAt := primitives.Vector{0.0, 1.0, 0.0}
+	lookFrom := primitives.Vector{13.0, 2.0, 3.0}
+	lookAt := primitives.Vector{0.0, 0.0, 0.0}
 
 	camera := DefaultCamera(
 		lookFrom,
 		lookAt,
 		primitives.Vector{0.0, 1.0, 0.0},
-		75,
+		20,
 		float64(width)/float64(height),
-		lookFrom.Sub(lookAt).Length(),
-		0.01,
+		0.1,
+		10.00,
+		0.0,
+		1.0,
 	)
 
 	world := RandomScene()
+
+	bar := progressbar.Default(int64(height * width))
 
 	for y := height - 1; y >= 0; y-- {
 		for x := 0; x < width; x++ {
@@ -223,6 +245,7 @@ func render(params RenderParams) {
 				B: uint8(col.B() * 255.99),
 				A: 255,
 			})
+			bar.Add(1)
 		}
 	}
 

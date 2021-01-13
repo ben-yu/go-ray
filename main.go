@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/ben-yu/go-ray/primitives"
+	"github.com/urfave/cli"
 )
 
 type Camera struct {
@@ -32,7 +33,7 @@ func DefaultCamera(lookFrom primitives.Vector,
 
 	w := lookFrom.Sub(lookAt).Unit()
 	u := vUP.Cross(w).Unit()
-	v := w.C(u)
+	v := w.Cross(u)
 
 	return Camera{
 		Origin:          lookFrom,
@@ -125,8 +126,63 @@ func RandomScene() primitives.HitableList {
 	return primitives.HitableList{list}
 }
 
+type RenderParams struct {
+	Width      int
+	Height     int
+	Samples    int
+	OutputFile string
+}
+
 func main() {
-	const width, height, numOfSamples = 2560, 1600, 100
+	var outputFile string
+	var width, height, samples int
+	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "output",
+				Value:       "output/output.png",
+				Usage:       "Path of the output image - only supports png at the moment",
+				Destination: &outputFile,
+			},
+			&cli.IntFlag{
+				Name:        "width",
+				Value:       100,
+				Usage:       "Width of the image in pixels",
+				Destination: &width,
+			},
+			&cli.IntFlag{
+				Name:        "height",
+				Value:       100,
+				Usage:       "Height of the image in pixels",
+				Destination: &height,
+			},
+			&cli.IntFlag{
+				Name:        "samples",
+				Value:       10,
+				Usage:       "Number of samples to take per pixel",
+				Destination: &samples,
+			},
+		},
+		Action: func(c *cli.Context) error {
+
+			params := RenderParams{}
+			params.OutputFile = outputFile
+			params.Width = width
+			params.Height = height
+			params.Samples = samples
+			render(params)
+			return nil
+		},
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func render(params RenderParams) {
+	var width, height, numOfSamples = params.Width, params.Height, params.Samples
 
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 
@@ -154,7 +210,7 @@ func main() {
 				r := camera.GetRay(u, v)
 				col = col.Add(Color(r, world, 0))
 			}
-			col = col.ScalarDiv(numOfSamples)
+			col = col.ScalarDiv(float64(numOfSamples))
 			col = primitives.Vector{
 				math.Sqrt(col.R()),
 				math.Sqrt(col.G()),
@@ -170,7 +226,7 @@ func main() {
 		}
 	}
 
-	f, err := os.Create("image.png")
+	f, err := os.Create(params.OutputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
